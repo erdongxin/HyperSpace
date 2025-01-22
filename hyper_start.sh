@@ -157,15 +157,18 @@ while true; do
     log_message "${BLUE}开始监控容器日志...${RESET}"
 
     # 获取最新日志并逐行读取（只读取最新10条)
-    docker logs --tail 10 "$CONTAINER_NAME" | while read -r line; do
+    docker logs --tail 10 aios-container | while read -r line; do
+        log_message "${BLUE} 容器日志：$line ${RESET}"
+        
         # 只在检测到异常时触发重启
-        if echo "$line" | grep -qE "Last pong received.*Sending reconnect signal|Failed to authenticate|Failed to connect to Hive|already running|\"message\": \"Internal server error\"" ; then
+        if echo "$line" | grep -qE "Last pong received.*Sending reconnect signal|Failed to authenticate|Failed to connect to Hive|already running|Checked for auto-update.*already running latest version|\"message\": \"Internal server error\"" ; then
+
             log_message "${BLUE}检测到错误，正在重新连接...${RESET}"
 
             # 执行容器操作
-            docker exec -i "$CONTAINER_NAME" /app/aios-cli kill
+            docker exec -i aios-container /app/aios-cli kill
             sleep 2
-            docker exec -i "$CONTAINER_NAME" /app/aios-cli start
+            docker exec -i aios-container /app/aios-cli start
 
             # 执行Hive登录和积分检查
             hive_login
@@ -173,7 +176,7 @@ while true; do
             get_current_signed_in_keys
 
             # 记录服务已重启
-            echo "$(date): 服务已重启" >> "$LOG_FILE"
+            log_message "${BLUE}服务已重启${RESET}"
 
             # 退出当前循环，等待下次 5 分钟检查
             break
