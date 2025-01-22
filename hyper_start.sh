@@ -88,20 +88,23 @@ hive_login() {
     n=1
     delay=10
     while true; do
+        
         # 步骤 1: 导入密钥
         docker exec -i aios-container /app/aios-cli hive import-keys /root/my.pem
         if [ $? -ne 0 ]; then
             log_message "第 $n 次尝试失败: 无法导入密钥。退出码: $?"
             ((n++))
+            sleep $delay
             log_message "重新执行导入密钥步骤..."
             continue  # 重新执行第一步
         fi
-
+        
         # 步骤 2: Hive 登录
         docker exec -i aios-container /app/aios-cli hive login
         if [ $? -ne 0 ]; then
             log_message "第 $n 次尝试失败: Hive登录失败。退出码: $?"
             ((n++))
+            sleep $delay
             log_message "重新执行登录步骤..."
             continue  # 重新执行第一步
         fi
@@ -111,6 +114,7 @@ hive_login() {
         if [ $? -ne 0 ]; then
             log_message "第 $n 次尝试失败: 无法选择tier 3。退出码: $?"
             ((n++))
+            sleep $delay
             log_message "重新执行选择tier 3步骤..."
             continue  # 重新执行第一步
         fi
@@ -120,6 +124,7 @@ hive_login() {
         if [ $? -ne 0 ]; then
             log_message "第 $n 次尝试失败: 无法连接到Hive。退出码: $?"
             ((n++))
+            sleep $delay
             log_message "重新执行连接步骤..."
             continue  # 重新执行第一步
         fi
