@@ -83,56 +83,56 @@ install_local_model() {
 }
 
 hive_login() {
-    log_message "${CYAN}正在登录Hive...${RESET}"
-    local n=1  # 初始化尝试计数
-    local delay=10
 
-    while true; do
-        log_message "第 $n 次尝试Hive操作..."
+    local max_retries=5  # 最大重试次数
+    local attempt=1      # 当前尝试次数
+
+    while [ $attempt -le $max_retries ]; do
+        log_message "${CYAN}第 $attempt 次尝试登录Hive...${RESET}"
 
         # 步骤 1: 导入密钥
         docker exec -i $CONTAINER_NAME /app/aios-cli hive import-keys /root/my.pem
         if [ $? -ne 0 ]; then
-            log_message "${RED}步骤1失败: 无法导入密钥，退出码: $?。重新执行第一步...${RESET}"
-            ((n++))
-            sleep $delay
-            continue  # 返回第1步
+            log_message "${RED}第 $attempt 次尝试失败: 导入密钥失败。${RESET}"
+            ((attempt++))
+            sleep 2  # 等待 2 秒后重试
+            continue
         fi
 
         # 步骤 2: Hive 登录
         docker exec -i $CONTAINER_NAME /app/aios-cli hive login
         if [ $? -ne 0 ]; then
-            log_message "${RED}步骤2失败: Hive登录失败，退出码: $?。重新执行第一步...${RESET}"
-            ((n++))
-            sleep $delay
-            continue  # 返回第1步
+            log_message "${RED}第 $attempt 次尝试失败: Hive 登录失败。${RESET}"
+            ((attempt++))
+            sleep 2  # 等待 2 秒后重试
+            continue
         fi
 
         # 步骤 3: 选择 tier 3
         docker exec -i $CONTAINER_NAME /app/aios-cli hive select-tier 3
         if [ $? -ne 0 ]; then
-            log_message "${RED}步骤3失败: 无法选择tier 3，退出码: $?。重新执行第一步...${RESET}"
-            ((n++))
-            sleep $delay
-            continue  # 返回第1步
+            log_message "${RED}第 $attempt 次尝试失败: 选择 tier 3 失败。${RESET}"
+            ((attempt++))
+            sleep 2  # 等待 2 秒后重试
+            continue
         fi
 
         # 步骤 4: Hive 连接
         docker exec -i $CONTAINER_NAME /app/aios-cli hive connect
         if [ $? -ne 0 ]; then
-            log_message "${RED}步骤4失败: 无法连接到Hive，退出码: $?。重新执行第一步...${RESET}"
-            ((n++))
-            sleep $delay
-            continue  # 返回第1步
+            log_message "${RED}第 $attempt 次尝试失败: Hive 连接失败。${RESET}"
+            ((attempt++))
+            sleep 2  # 等待 2 秒后重试
+            continue
         fi
 
-        # 如果所有步骤都成功
-        log_message "${GREEN}Hive登录成功。${RESET}"
-        return 0  # 退出循环
+        log_message "${GREEN}Hive 登录成功！${RESET}"
+        return 0  # 全部步骤成功，退出函数
     done
+
+    log_message "${RED}Hive 登录尝试超过 $max_retries 次，放弃。${RESET}"
+    return 1  # 超过重试次数，返回失败状态
 }
-
-
 
 
 # 检查Hive积分的函数
@@ -155,15 +155,39 @@ cleanup_package_lists() {
 }
 
 # 主脚本流程
-check_and_install_docker
-start_container
-wait_for_container_to_start
-install_local_model
-check_daemon_status
-hive_login
-check_hive_points
-get_current_signed_in_keys
-cleanup_package_lists
+while true; do
+    log_message "${CYAN}启动脚本流程...${RESET}"
+
+    # 删除原有容器
+    docker rm -f aios-container
+    
+    # 检查和安装Docker
+    check_and_install_docker || continue
+
+    # 启动容器
+    start_container || continue
+
+    # 等待容器初始化
+    wait_for_container_to_start || continue
+
+    # 安装本地模型
+    install_local_model || continue
+
+    # 检查守护进程
+    check_daemon_status || continue
+
+    # 登录Hive
+    hive_login || continue
+
+    # 检查Hive积分
+    check_hive_points || continue
+
+    # 获取当前登录密钥
+    get_current_signed_in_keys || continue
+
+    log_message "${GREEN}所有步骤成功完成！${RESET}"
+    break
+done
 
 
 # 监控容器日志并触发操作
@@ -179,15 +203,34 @@ while true; do
 
             log_message "${BLUE}检测到错误，正在重新连接...${RESET}"
 
-            # 执行容器操作
-            docker exec -i aios-container /app/aios-cli kill
-            sleep 2
-            docker exec -i aios-container /app/aios-cli start
-
-            # 执行Hive登录和积分检查
-            hive_login
-            check_hive_points
-            get_current_signed_in_keys
+            # 删除原有容器
+            docker rm -f aios-container
+            
+            # 检查和安装Docker
+            check_and_install_docker || continue
+        
+            # 启动容器
+            start_container || continue
+        
+            # 等待容器初始化
+            wait_for_container_to_start || continue
+        
+            # 安装本地模型
+            install_local_model || continue
+        
+            # 检查守护进程
+            check_daemon_status || continue
+        
+            # 登录Hive
+            hive_login || continue
+        
+            # 检查Hive积分
+            check_hive_points || continue
+        
+            # 获取当前登录密钥
+            get_current_signed_in_keys || continue
+        
+            log_message "${GREEN}所有步骤成功完成！${RESET}"
 
             # 记录服务已重启
             log_message "${BLUE}服务已重启${RESET}"
