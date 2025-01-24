@@ -84,57 +84,54 @@ install_local_model() {
 
 hive_login() {
     log_message "${CYAN}正在登录Hive...${RESET}"
+    local n=1  # 初始化尝试计数
+    local delay=10
 
-    n=1
-    delay=10
     while true; do
-        
+        log_message "第 $n 次尝试Hive操作..."
+
         # 步骤 1: 导入密钥
-        docker exec -i aios-container /app/aios-cli hive import-keys /root/my.pem
+        docker exec -i $CONTAINER_NAME /app/aios-cli hive import-keys /root/my.pem
         if [ $? -ne 0 ]; then
-            log_message "第 $n 次尝试失败: 无法导入密钥。退出码: $?"
+            log_message "${RED}步骤1失败: 无法导入密钥，退出码: $?。重新执行第一步...${RESET}"
             ((n++))
             sleep $delay
-            log_message "重新执行导入密钥步骤..."
-            continue  # 重新执行第一步
+            continue  # 返回第1步
         fi
-        
+
         # 步骤 2: Hive 登录
-        docker exec -i aios-container /app/aios-cli hive login
+        docker exec -i $CONTAINER_NAME /app/aios-cli hive login
         if [ $? -ne 0 ]; then
-            log_message "第 $n 次尝试失败: Hive登录失败。退出码: $?"
+            log_message "${RED}步骤2失败: Hive登录失败，退出码: $?。重新执行第一步...${RESET}"
             ((n++))
             sleep $delay
-            log_message "重新执行登录步骤..."
-            continue  # 重新执行第一步
+            continue  # 返回第1步
         fi
 
         # 步骤 3: 选择 tier 3
-        docker exec -i aios-container /app/aios-cli hive select-tier 3
+        docker exec -i $CONTAINER_NAME /app/aios-cli hive select-tier 3
         if [ $? -ne 0 ]; then
-            log_message "第 $n 次尝试失败: 无法选择tier 3。退出码: $?"
+            log_message "${RED}步骤3失败: 无法选择tier 3，退出码: $?。重新执行第一步...${RESET}"
             ((n++))
             sleep $delay
-            log_message "重新执行选择tier 3步骤..."
-            continue  # 重新执行第一步
+            continue  # 返回第1步
         fi
 
         # 步骤 4: Hive 连接
-        docker exec -i aios-container /app/aios-cli hive connect
+        docker exec -i $CONTAINER_NAME /app/aios-cli hive connect
         if [ $? -ne 0 ]; then
-            log_message "第 $n 次尝试失败: 无法连接到Hive。退出码: $?"
+            log_message "${RED}步骤4失败: 无法连接到Hive，退出码: $?。重新执行第一步...${RESET}"
             ((n++))
             sleep $delay
-            log_message "重新执行连接步骤..."
-            continue  # 重新执行第一步
+            continue  # 返回第1步
         fi
 
         # 如果所有步骤都成功
         log_message "${GREEN}Hive登录成功。${RESET}"
-        return 0  # 所有步骤成功，退出函数
-
+        return 0  # 退出循环
     done
 }
+
 
 
 
