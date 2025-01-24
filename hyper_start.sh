@@ -84,7 +84,7 @@ install_local_model() {
 
 hive_login() {
 
-    local max_retries=5  # 最大重试次数
+    local max_retries=10  # 最大重试次数
     local attempt=1      # 当前尝试次数
 
     while [ $attempt -le $max_retries ]; do
