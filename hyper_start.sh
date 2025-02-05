@@ -161,7 +161,9 @@ done
 # 监控容器日志并触发操作
 while true; do
     log_message "${BLUE}开始监控容器日志...${RESET}"
-
+    #查询积分
+    check_hive_points
+    
     ERROR_DETECTED=0
     LOG_TMP_FILE=$(mktemp)
     docker logs --tail 10 $CONTAINER_NAME 2>&1 > "$LOG_TMP_FILE"
