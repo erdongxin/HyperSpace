@@ -166,7 +166,7 @@ while true; do
     
     ERROR_DETECTED=0
     LOG_TMP_FILE=$(mktemp)
-    docker logs --tail 5 $CONTAINER_NAME 2>&1 > "$LOG_TMP_FILE"
+    docker logs --tail 4 $CONTAINER_NAME 2>&1 > "$LOG_TMP_FILE"
 
     while read -r line; do
         # 过滤颜色代码并记录
