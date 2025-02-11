@@ -176,11 +176,11 @@ while true; do
         # 关键错误模式匹配
         if echo "$clean_line" | grep -qE \
             "Last pong received.*Sending reconnect signal|\
-        Failed to authenticate|\
-        Failed to connect to Hive|\
-        already running.*version|\
-        Checked for auto-update.*already running|\
-        \"message\": \"Internal server error\""
+Failed to authenticate|\
+Failed to connect to Hive|\
+already running.*version|\
+Checked for auto-update, already running latest version|\
+\"message\": \"Internal server error\""
         then
             log_message "${RED}检测到错误模式: $clean_line${RESET}"
             ERROR_DETECTED=1
