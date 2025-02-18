@@ -160,7 +160,7 @@ check_hive_points() {
             STAGNATION_START="N/A"
         else 
             [[ $STAGNATION_START == "N/A" ]] && STAGNATION_START=$(date -d @$LAST_CHANGE_TIMESTAMP +"%Y-%m-%d %H:%M")
-            log_message "${BLUE}当前积分：${CYAN}${current_points} ${GREEN}（持续：${duration_display}，自 ${STAGNATION_START}）${RESET}"
+            log_message "${BLUE}当前积分：${CYAN}${current_points} ${GREEN}（持续时长：${duration_display}，记录时间： ${STAGNATION_START}）${RESET}"
         fi 
         
         return 0 
