@@ -196,11 +196,11 @@ start_hyper() {
     done
 }
 
+#启动脚本
+start_hyper
+
 # 主流程、启动脚本、监控容器
 while true; do
-    #启动脚本
-    start_hyper
-    
     log_message "${BLUE}开始监控容器日志...${RESET}"
     #初始化错误常量
     ERROR_DETECTED=0
