@@ -212,14 +212,15 @@ while true; do
         unique_points=$(printf "%s\n" "${POINTS_HISTORY[@]}" | sort -u | wc -l)
     
         if [ $unique_points -eq 1 ]; then 
-            local stagnation_duration=$(( ( $(date +%s) - LAST_CHANGE_TIMESTAMP ) / 60 ))
-            local human_duration=$(printf "%dh%02dm" $((stagnation_duration/60)) $((stagnation_duration%60)))
+            stagnation_duration=$(( ( $(date +%s) - LAST_CHANGE_TIMESTAMP ) / 60 ))  # 移除local 
+            human_duration=$(printf "%dh%02dm" $((stagnation_duration/60)) $((stagnation_duration%60)))
             
             log_message "${RED}⚠️ 积分停滞告警：${CYAN}${LAST_POINTS} ${RED}持续 ${human_duration} 未变化${RESET}"
             log_message "${YELLOW}┌──────────────────────────────┐\n│ 触发条件                     │\n├──────────────────────────────┤\n│ 连续检测次数 │   当前持续时间 │\n├──────────────┼───────────────┤\n│   ${STAGNATION_THRESHOLD}次     │   ${human_duration}    │\n└──────────────────────────────┘${RESET}"
             
             ERROR_DETECTED=1 
             POINTS_HISTORY=()
+            LAST_CHANGE_TIMESTAMP=$(date +%s)  # 重置时间
             STAGNATION_START="N/A"
         fi 
     fi
