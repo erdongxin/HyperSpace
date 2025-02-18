@@ -251,12 +251,10 @@ Checked for auto-update, already running latest version|\
      #异常重启
     if [ $ERROR_DETECTED -eq 1 ]; then
         log_message "${RED}触发重启流程...${RESET}"
-
-        {
-            start_hyper
-        } >> $LOG_FILE 2>&1
+        start_hyper
 
         log_message "${GREEN}重启流程完成！等待5分钟后继续监控${RESET}"
+        sleep 300
     else
         log_message "${GREEN}未检测到异常日志${RESET}"
     fi
