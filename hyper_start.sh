@@ -252,9 +252,8 @@ Checked for auto-update, already running latest version|\
     if [ $ERROR_DETECTED -eq 1 ]; then
         log_message "${RED}触发重启流程...${RESET}"
         start_hyper
-
-        log_message "${GREEN}重启流程完成！等待5分钟后继续监控${RESET}"
-        sleep 300
+        log_message "${GREEN}重启流程完成！${RESET}"
+        
     else
         log_message "${GREEN}未检测到异常日志${RESET}"
     fi
