@@ -12,6 +12,9 @@ LOG_FILE="/root/script_progress.log"
 CONTAINER_NAME="aios-container"
 declare -a POINTS_HISTORY    # 积分历史记录数组 
 STAGNATION_THRESHOLD=24      # 连续相同积分阈值
+LAST_CHANGE_TIMESTAMP=$(date +%s)  # 最后变动时间戳 
+LAST_POINTS=""                     # 上次记录的积分值 
+STAGNATION_START="N/A"             # 停滞开始时间
 
 # ANSI颜色代码过滤函数
 strip_ansi() {
@@ -132,24 +135,38 @@ hive_login() {
 
 # 检查Hive积分的函数
 check_hive_points() {
-    log_message "${BLUE}正在检查Hive积分...${RESET}"
-    local points_output=$(docker exec -i aios-container /app/aios-cli hive points 2>&1)
+    local points_output=$(docker exec -i $CONTAINER_NAME /app/aios-cli hive points 2>&1)
     
-    # 使用更精确的正则表达式匹配 
     if [[ $points_output =~ Points:[[:space:]]+([0-9]+(\.[0-9]+)?) ]]; then 
         local current_points="${BASH_REMATCH[1]}"
+        local time_now=$(date +%s)
+        local duration=$(( (time_now - LAST_CHANGE_TIMESTAMP) / 60 ))  # 分钟数 
         
-        # 维护积分历史记录（最多保留24次）
+        # 生成可读时间格式 
+        local duration_display=$(printf "%dh%02dm" $((duration/60)) $((duration%60)))
+        
+        # 首次运行初始化 
+        [[ -z "$LAST_POINTS" ]] && LAST_POINTS=$current_points 
+ 
+        # 维护积分历史 
         POINTS_HISTORY+=("$current_points")
-        if [ ${#POINTS_HISTORY[@]} -gt $STAGNATION_THRESHOLD ]; then 
-            POINTS_HISTORY=("${POINTS_HISTORY[@]:1}") # 移除最旧记录 
+        [[ ${#POINTS_HISTORY[@]} -gt $STAGNATION_THRESHOLD ]] && POINTS_HISTORY=("${POINTS_HISTORY[@]:1}")
+ 
+        # 变动检测逻辑 
+        if [[ "$current_points" != "$LAST_POINTS" ]]; then 
+            log_message "${CYAN}积分变动：${GREEN}${LAST_POINTS} → ${CYAN}${current_points} ${GREEN}（间隔：${duration_display}）${RESET}"
+            LAST_CHANGE_TIMESTAMP=$time_now 
+            LAST_POINTS=$current_points 
+            STAGNATION_START="N/A"
+        else 
+            [[ $STAGNATION_START == "N/A" ]] && STAGNATION_START=$(date -d @$LAST_CHANGE_TIMESTAMP +"%Y-%m-%d %H:%M")
+            log_message "${BLUE}当前积分：${CYAN}${current_points} ${GREEN}（持续：${duration_display}，自 ${STAGNATION_START}）${RESET}"
         fi 
         
-        log_message "${GREEN}当前积分：${CYAN}$current_points 点${RESET}"
         return 0 
     fi 
     
-    log_message "${RED}无法获取Hive积分${RESET}"
+    log_message "${RED}积分获取失败，保留历史记录${RESET}"
     return 1 
 }
 
@@ -193,13 +210,17 @@ while true; do
     # 积分停滞检测，若两小时未改变则触发重启
     if [ ${#POINTS_HISTORY[@]} -eq $STAGNATION_THRESHOLD ]; then 
         unique_points=$(printf "%s\n" "${POINTS_HISTORY[@]}" | sort -u | wc -l)
-        
+    
         if [ $unique_points -eq 1 ]; then 
-            log_message "${RED}检测到积分连续${STAGNATION_THRESHOLD}次未变化，触发重启...${RESET}"
+            local stagnation_duration=$(( ( $(date +%s) - LAST_CHANGE_TIMESTAMP ) / 60 ))
+            local human_duration=$(printf "%dh%02dm" $((stagnation_duration/60)) $((stagnation_duration%60)))
+            
+            log_message "${RED}⚠️ 积分停滞告警：${CYAN}${LAST_POINTS} ${RED}持续 ${human_duration} 未变化${RESET}"
+            log_message "${YELLOW}┌──────────────────────────────┐\n│ 触发条件                     │\n├──────────────────────────────┤\n│ 连续检测次数 │   当前持续时间 │\n├──────────────┼───────────────┤\n│   ${STAGNATION_THRESHOLD}次     │   ${human_duration}    │\n└──────────────────────────────┘${RESET}"
+            
             ERROR_DETECTED=1 
-            POINTS_HISTORY=() # 重置历史记录 
-        else 
-            log_message "${GREEN}积分变动正常（最近${#POINTS_HISTORY[@]}次记录）${RESET}"
+            POINTS_HISTORY=()
+            STAGNATION_START="N/A"
         fi 
     fi
 
